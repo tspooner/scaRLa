@@ -1,44 +1,63 @@
 package scarla.experiment
 
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.Await
 import scala.concurrent.duration._
 
 import akka.pattern.ask
-import akka.actor.ActorSystem
+import akka.actor.Actor
 import akka.actor.Status
 import akka.actor.Props
 import akka.util.Timeout
-import akka.event.Logging
 
 import scarla.agent.Agent
 import scarla.domain.Domain
 
-class Experiment(val name: String,
-                 val agentProps: Props,
-                 val domainProps: Props) {
+object Experiment {
 
-  val system = ActorSystem(name)
-  val log    = Logging.getLogger(system, this)
+  sealed abstract trait Instruction
+  final case class Run(nEpisodes: Int) extends Instruction
+  final case class Evaluate(nEpisodes: Int) extends Instruction
 
-  val agent  = system.actorOf(agentProps, "agent")
-  val domain = system.actorOf(domainProps, "domain")
+  def props(domainProps: Props, agentProps: Props) =
+    Props(new Experiment(domainProps, agentProps))
+}
+
+class Experiment(val domainProps: Props,
+                 val agentProps: Props)
+  extends Actor with akka.actor.ActorLogging {
+
+  import Experiment._
+
+  val domain = context.actorOf(domainProps, "domain")
+  val agent  = context.actorOf(agentProps, "agent")
 
   def run(nEpisodes: Int): Unit = {
-    implicit val timeout = Timeout(10.seconds)
+    implicit val timeout = Timeout(2.seconds)
 
     def runEpisode(eid: Int) = {
       val episode =
-        system.actorOf(Episode.props(eid, agent, domain),
-                       "episode-%d".format(eid))
+        context.actorOf(Episode.props(eid, agent, domain),
+                        "episode-%d".format(eid))
 
-      Await.result(episode ? Episode.RunAndReply, timeout.duration) match {
+      Await.result(episode ? Episode.Run, timeout.duration) match {
         case Status.Success =>
-          system stop episode
+          context stop episode
+
+        case f: Status.Failure =>
+          sender() forward f
       }
     }
 
     1 to nEpisodes foreach runEpisode
+
+    sender() ! Status.Success
   }
 
-  def terminate = system.terminate
+
+  def receive = {
+    case instruction: Instruction => instruction match {
+      case Run(nEpisodes)      => run(nEpisodes)
+      case Evaluate(nEpisodes) =>
+    }
+  }
 }

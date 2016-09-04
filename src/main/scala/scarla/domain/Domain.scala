@@ -1,26 +1,46 @@
 package scarla.domain
 
-import akka.actor.ActorRef
-import akka.actor.Actor
-import akka.actor.Props
+import akka.actor.{Actor, ActorRef, ActorLogging}
+import scala.collection.mutable.Set
 
 object Domain {
 
-  sealed abstract trait Instruction
-  final case class DoAction(aid: Int) extends Instruction
+  sealed abstract trait Status
+  final case object Completed extends Status
+  final case object Failed extends Status
 
-  def props: Props = Props(classOf[Domain])
+  sealed abstract trait Instruction
+  final case object GetState extends Instruction
+  final case class DoAction(aid: Int) extends Instruction
+  final case object Subscribe extends Instruction
+  final case object Unsubscribe extends Instruction
 }
 
-class Domain extends Actor with akka.actor.ActorLogging {
+abstract class Domain extends Actor with ActorLogging {
   import Domain._
 
-  def doAction(aid: Int) =
-    log.info("Doing action %d".format(aid))
+  val subscribers: Set[ActorRef] = Set()
+
+  def initialState: State
+  def doAction(aid: Int)
+
+  var state: State = initialState
+
 
   def receive = {
     case instruction: Instruction => instruction match {
-      case DoAction(aid) => doAction(aid)
+      case GetState      => sender() ! state
+      case DoAction(aid) =>
+        doAction(aid)
+        sender() ! state
+
+        if (state.isTerminal) {
+          state = initialState
+          subscribers.map(_.tell(Domain.Completed, self))
+        }
+
+      case Subscribe   => subscribers += sender()
+      case Unsubscribe => subscribers -= sender()
     }
   }
 }
