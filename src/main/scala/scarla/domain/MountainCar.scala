@@ -3,37 +3,58 @@ package scarla.domain
 import akka.actor.Props
 
 import scala.math
+
 import scala.collection.immutable.Vector
 
-object MountainCar {
+object MountainCar extends DomainSpec {
 
-  val X_MIN, X_MAX = (-1.2, 0.5)      // Lower/Upper bounds on position
-  val V_MIN, V_MAX = (-0.07, 0.07)    // Lower/Upper bounds on velocity
+  // MountainCar:
+  private val X_MIN = -1.2
+  private val X_MAX = 0.5
 
-  val STEP_REWARD = -1
-  val GOAL_REWARD = 0
+  private val V_MIN = -0.07
+  private val V_MAX = 0.07
 
-  val GOAL = .5
+  private val STEP_REWARD = -1.0
+  private val GOAL_REWARD = 0.0
 
-  val ACTIONS = Vector(-1, 0, 1)
+  private val ACTIONS = Vector(-1, 0, 1)
 
+  // DomainSpec:
+  val N_DIMENSIONS = 2
+  val D_LIMITS = Vector((X_MIN, X_MAX), (V_MIN, V_MAX))
 
+  val N_ACTIONS = 3
+
+  // Akka:
   def props: Props = Props(classOf[MountainCar])
 }
 
-class MountainCar extends Domain {
+class MountainCar extends Domain(MountainCar) {
+  import MountainCar._
 
-  def initialState: State =
-    State(Vector(-0.5, 0.0))
+  def initialState =
+    State(Vector(-0.5, 0.0), ALL_AIDS)
 
-  def doAction(aid: Int) = {
+  def next(aid: Int): State = {
     val a = MountainCar.ACTIONS(aid)
-    var position = state.features(0)
-    var velocity = state.features(1)
+    var position = state.values(0)
+    var velocity = state.values(1)
 
     velocity += 0.001*a - 0.0025*math.cos(3*position)
     position += velocity
 
-    state = State(Vector(position, velocity), true)
+    if (position <= X_MIN) {
+      position = X_MIN
+      velocity = 0.0
+    }
+
+    if (position >= X_MAX)
+      position = X_MAX
+
+    State(Vector(position, velocity), ALL_AIDS, position == X_MAX)
   }
+
+  def reward(s: State, ns: State): Double =
+    if (ns.values(0) >= X_MAX) GOAL_REWARD else STEP_REWARD
 }

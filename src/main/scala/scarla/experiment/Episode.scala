@@ -1,10 +1,9 @@
 package scarla.experiment
 
-import akka.actor.ActorRef
-import akka.actor.Actor
-import akka.actor.Props
+import akka.actor.{Actor, ActorRef, Props}
 
-import scarla.domain.Domain
+import scarla.agent.Agent
+import scarla.domain.{Domain, State}
 
 object Episode {
 
@@ -17,43 +16,58 @@ object Episode {
 
 class Episode(val eid: Int,
               val agent: ActorRef,
-              val domain: ActorRef) extends Actor with akka.actor.ActorLogging {
+              val domain: ActorRef)
+  extends Actor with akka.actor.ActorLogging {
 
   import Episode._
 
   var returnRef: Option[ActorRef] = None
 
+  var stepCounter: Int = 0
+  def stepLimit: Int = 1000
+
+
+  protected def _run = {
+    returnRef match {
+      case None    =>
+        returnRef = Some(sender())
+
+        domain ! Domain.GetState
+
+      case Some(ref) =>
+        log.warning("Episode already in progress.")
+    }
+  }
+
+
+  protected def _handle[T](msg: T) =
+    agent ! Agent.Learn(msg)
+
+  protected def _handle(d: Domain.DoAction) =
+    domain ! d
+
+  protected def _log =
+    log.info("Training episode %d complete: %d steps".format(eid, stepCounter))
+
 
   def receive = {
-    case instruction: Instruction => instruction match {
-      case Run =>
-        log.info("Running episode %d".format(eid))
-
-        returnRef match {
-          case None    =>
-            returnRef = Some(sender())
-
-            domain ! Domain.Subscribe
-            domain.tell(Domain.GetState, agent)
-
-          case Some(ref) =>
-            log.warning("Episode already in progress.")
-        }
+    case i: Instruction => i match {
+      case Run => _run
     }
 
-    case domainStatus: Domain.Status =>
-      domain ! Domain.Unsubscribe
+    case s: State => _handle(s)
+    case t: State.Transition =>
+      stepCounter += 1
 
-      domainStatus match {
-        case Domain.Completed =>
-          if (returnRef.isDefined)
-            returnRef.get ! akka.actor.Status.Success
+      _handle(t)
 
-        case Domain.Failed =>
-          if (returnRef.isDefined)
-            returnRef.get ! akka.actor.Status.Failure(
-              new RuntimeException("Episode %d failed to complete.".format(eid))
-              )
+      if (t.ns.isTerminal || stepCounter >= stepLimit) {
+        _log
+
+        if (returnRef.isDefined)
+          returnRef.get ! akka.actor.Status.Success
       }
+
+    case d: Domain.DoAction if (stepCounter < stepLimit) => _handle(d)
   }
 }

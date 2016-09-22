@@ -4,9 +4,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 
 import akka.pattern.ask
-import akka.actor.Actor
-import akka.actor.Status
-import akka.actor.Props
+import akka.actor.{Actor, ActorRef, Props, Status}
 import akka.util.Timeout
 
 import scarla.agent.Agent
@@ -15,7 +13,7 @@ import scarla.domain.Domain
 object Experiment {
 
   sealed abstract trait Instruction
-  final case class Run(nEpisodes: Int) extends Instruction
+  final case class Train(nEpisodes: Int) extends Instruction
   final case class Evaluate(nEpisodes: Int) extends Instruction
 
   def props(domainProps: Props, agentProps: Props) =
@@ -31,21 +29,31 @@ class Experiment(val domainProps: Props,
   val domain = context.actorOf(domainProps, "domain")
   val agent  = context.actorOf(agentProps, "agent")
 
-  def run(nEpisodes: Int): Unit = {
-    implicit val timeout = Timeout(2.seconds)
+
+  private val _trainEpisode: PartialFunction[Int, ActorRef] = {
+    case eid: Int =>
+      context.actorOf(Episode.props(eid, agent, domain),
+                      "episode-%d".format(eid))
+  }
+
+  private val _evalEpisode: PartialFunction[Int, ActorRef] = {
+    case eid: Int =>
+      context.actorOf(EvaluationEpisode.props(eid, agent, domain),
+                      "evaluation-%d".format(eid))
+  }
+
+
+  protected def _run(nEpisodes: Int,
+                     newEpisode: (Int) => ActorRef): Unit = {
+    implicit val timeout = Timeout(10.seconds)
 
     def runEpisode(eid: Int) = {
-      val episode =
-        context.actorOf(Episode.props(eid, agent, domain),
-                        "episode-%d".format(eid))
+      val episode = newEpisode(eid)
 
-      Await.result(episode ? Episode.Run, timeout.duration) match {
-        case Status.Success =>
-          context stop episode
+      Await.result(episode ? Episode.Run, timeout.duration)
+      context stop episode
 
-        case f: Status.Failure =>
-          sender() forward f
-      }
+      domain ! Domain.Reset
     }
 
     1 to nEpisodes foreach runEpisode
@@ -56,8 +64,8 @@ class Experiment(val domainProps: Props,
 
   def receive = {
     case instruction: Instruction => instruction match {
-      case Run(nEpisodes)      => run(nEpisodes)
-      case Evaluate(nEpisodes) =>
+      case Train(nEpisodes)    => _run(nEpisodes, _trainEpisode)
+      case Evaluate(nEpisodes) => _run(nEpisodes, _evalEpisode)
     }
   }
 }

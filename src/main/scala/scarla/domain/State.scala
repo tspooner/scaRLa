@@ -2,5 +2,10 @@ package scarla.domain
 
 import scala.collection.immutable.Vector
 
-case class State(val features: Vector[Double],
+object State {
+  final case class Transition(s: State, aid: Int, r: Double, ns: State)
+}
+
+case class State(val values: Vector[Double],
+                 val availableActions: Vector[Int],
                  val isTerminal: Boolean = false) extends Serializable

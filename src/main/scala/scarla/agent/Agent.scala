@@ -1,37 +1,52 @@
 package scarla.agent
 
-import akka.actor.ActorRef
-import akka.actor.Actor
-import akka.actor.Props
+import akka.actor.{ActorRef, Actor}
 
 import scarla.domain.{Domain, State}
-import scarla.agent.policy.Policy
-import scarla.agent.model.Model
+import scarla.mapping.Mapping
+import scarla.policy.{Policy, Greedy}
 
 object Agent {
 
   sealed abstract trait Instruction
-  final case object Act extends Instruction
-  final case object Learn extends Instruction
-
-  def props(policy: Policy, model: Model): Props =
-    Props(new Agent(policy, model))
+  final case class Learn(msg: Any)
+  final case class Evaluate(msg: Any)
 }
 
-class Agent(val policy: Policy, val model: Model)
-extends Actor with akka.actor.ActorLogging {
+abstract class Agent(val mapping: Mapping, val policy: Policy)
+  extends Actor with akka.actor.ActorLogging {
 
   import Agent._
 
-  def receive = {
-    case s: State =>
-      if (!s.isTerminal)
-        sender() ! Domain.DoAction(0)
+  val greedyPolicy: Policy = new Greedy(mapping)
 
-    case instruction: Instruction => instruction match {
-      case Act    => log.info("Act")
-      case Learn  => log.info("Learn")
-      case _      => log.info("_")
+  def act(s: State): Int = policy.pi(s)
+  def greedy(s: State): Int = greedyPolicy.pi(s)
+
+  def learn(s: State, aid: Int, r: Double, ns: State)
+
+
+  def receive = {
+    case Learn(msg) => msg match {
+      case s: State =>
+        sender() ! Domain.DoAction(act(s))
+
+      case State.Transition(s, aid, r, ns) =>
+        learn(s, aid, r, ns)
+
+        if (ns.isTerminal)
+          policy.terminalUpdate(s)
+        else
+          sender() ! Domain.DoAction(act(ns))
+    }
+
+    case Evaluate(msg) => msg match {
+      case s: State =>
+        sender() ! Domain.DoAction(greedy(s))
+
+      case State.Transition(s, aid, r, ns) =>
+        if (!ns.isTerminal)
+          sender() ! Domain.DoAction(greedy(ns))
     }
   }
 }
