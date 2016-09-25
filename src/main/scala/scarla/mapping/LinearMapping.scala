@@ -5,7 +5,7 @@ import breeze.linalg.{DenseVector, DenseMatrix, Axis, sum, *}
 import scarla.domain.{State, DomainSpec}
 
 abstract class LinearMapping(val domainSpec: DomainSpec,
-                             val discretisation: Int = 20) extends Mapping {
+                             val discretisation: Int) extends Mapping {
 
   val nBins: Vector[Int] = domainSpec.D_LIMITS.map(_ => discretisation)
   val binWidths: DenseVector[Double] =
@@ -27,7 +27,7 @@ abstract class LinearMapping(val domainSpec: DomainSpec,
   protected def _zeroMatrix: DenseMatrix[Double] =
     DenseMatrix.zeros[Double](dimensionality, domainSpec.N_ACTIONS)
 
-  protected def _phi(s: State): DenseVector[Double]
+  protected def _phi(sv: Vector[Double]): DenseVector[Double]
 
 
   // TODO: Base logic for Q(s) is inefficient, override here to take advantage
@@ -60,7 +60,7 @@ abstract class LinearMapping(val domainSpec: DomainSpec,
     case false =>
       val p = _zeroMatrix
 
-      p(::, aid) := _phi(s)
+      p(::, aid) := _phi(s.values)
 
       p
   }

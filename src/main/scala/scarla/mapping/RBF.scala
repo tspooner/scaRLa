@@ -6,7 +6,8 @@ import breeze.numerics.{pow, exp}
 import scarla.domain.{DomainSpec, State}
 import scarla.utilities.General.{com, linspace}
 
-class RBF(domainSpec: DomainSpec) extends LinearMapping(domainSpec) {
+class RBF(domainSpec: DomainSpec, discretisation: Int = 6)
+  extends LinearMapping(domainSpec, discretisation) {
 
   val mu: DenseMatrix[Double] = _uniformRBFs
 
@@ -26,8 +27,8 @@ class RBF(domainSpec: DomainSpec) extends LinearMapping(domainSpec) {
   }
 
 
-  def _phi(s: State): DenseVector[Double] = {
-    val d = mu(*, ::) - new DenseVector(s.values.toArray)
+  def _phi(sv: Vector[Double]): DenseVector[Double] = {
+    val d = mu(*, ::) - new DenseVector(sv.toArray)
     val e = sum(exp(-pow(d(*, ::) :/ binWidths, 2.0)), Axis._1)
 
     e / sum(e)

@@ -18,7 +18,7 @@ class TDControlAgent(val algo: Algorithm, mapping: Mapping, policy: Policy)
 
   import TDControlAgent._
 
-  val alpha = 0.20
+  val alpha = 0.005
   val gamma = 0.95
 
 
