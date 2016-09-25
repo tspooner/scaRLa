@@ -5,7 +5,7 @@ import scala.collection.immutable.Set
 import scarla.domain.State
 import scarla.mapping.Mapping
 
-class Greedy(mapping: Mapping) extends Policy(mapping) {
+class Greedy(mapping: Mapping) extends AdaptivePolicy(mapping) {
 
   // def _pi(s: State, a: Int, bestActions: Set[Int]): Double =
     // if (bestActions contains a) (1.0 / bestActions.size) else 0.0
