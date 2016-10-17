@@ -13,12 +13,12 @@ object TDControlAgent {
     Props(new TDControlAgent(algo, mapping, policy))
 }
 
-class TDControlAgent(val algo: Algorithm, mapping: Mapping, policy: Policy)
+class TDControlAgent(algo: Algorithm, mapping: Mapping, policy: Policy)
   extends Agent(mapping, policy) {
 
   import TDControlAgent._
 
-  val alpha = 0.005
+  val alpha = 0.01
   val gamma = 0.95
 
 

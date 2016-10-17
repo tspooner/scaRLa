@@ -32,7 +32,7 @@ class Experiment(val domainProps: Props,
 
   private val _trainEpisode: PartialFunction[Int, ActorRef] = {
     case eid: Int =>
-      context.actorOf(Episode.props(eid, agent, domain),
+      context.actorOf(TrainingEpisode.props(eid, agent, domain),
                       "episode-%d".format(eid))
   }
 
@@ -40,6 +40,13 @@ class Experiment(val domainProps: Props,
     case eid: Int =>
       context.actorOf(EvaluationEpisode.props(eid, agent, domain),
                       "evaluation-%d".format(eid))
+  }
+
+
+  override def preStart() = {
+    super.preStart()
+
+    context.system.eventStream.subscribe(self, classOf[Feedback])
   }
 
 

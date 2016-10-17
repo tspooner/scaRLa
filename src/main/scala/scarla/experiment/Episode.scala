@@ -9,14 +9,11 @@ object Episode {
 
   sealed abstract trait Instruction
   final case object Run extends Instruction
-
-  def props(eid: Int, agent: ActorRef, domain: ActorRef): Props =
-    Props(new Episode(eid, agent, domain))
 }
 
-class Episode(val eid: Int,
-              val agent: ActorRef,
-              val domain: ActorRef)
+abstract class Episode(val eid: Int,
+                       val agent: ActorRef,
+                       val domain: ActorRef)
   extends Actor with akka.actor.ActorLogging {
 
   import Episode._
@@ -24,7 +21,7 @@ class Episode(val eid: Int,
   var returnRef: Option[ActorRef] = None
 
   var stepCounter: Int = 0
-  def stepLimit: Int = 1000
+  def stepLimit: Int = 2000
 
 
   protected def _run = {
@@ -40,14 +37,17 @@ class Episode(val eid: Int,
   }
 
 
-  protected def _handle[T](msg: T) =
-    agent ! Agent.Learn(msg)
-
+  protected def _handle[T](msg: T)
   protected def _handle(d: Domain.DoAction) =
     domain ! d
 
-  protected def _log =
-    log.info("Training episode %d complete: %d steps".format(eid, stepCounter))
+  protected def _log = {}
+
+  protected def _publish =
+    context.system.eventStream.publish(Feedback(Map(
+      "eid" -> eid,
+      "type" -> this.getClass.getSimpleName,
+      "n_steps" -> stepCounter)))
 
 
   def receive = {
@@ -63,6 +63,7 @@ class Episode(val eid: Int,
 
       if (t.ns.isTerminal || stepCounter >= stepLimit) {
         _log
+        _publish
 
         if (returnRef.isDefined)
           returnRef.get ! akka.actor.Status.Success
@@ -70,4 +71,42 @@ class Episode(val eid: Int,
 
     case d: Domain.DoAction if (stepCounter < stepLimit) => _handle(d)
   }
+}
+
+
+object TrainingEpisode {
+
+  def props(eid: Int, agent: ActorRef, domain: ActorRef): Props =
+    Props(new TrainingEpisode(eid, agent, domain))
+}
+
+class TrainingEpisode(eid: Int, agent: ActorRef, domain: ActorRef)
+  extends Episode(eid, agent, domain) {
+
+  import Episode._
+
+  def _handle[T](msg: T) =
+    agent ! Agent.Learn(msg)
+
+  override def _log =
+    log.info("Training episode %d complete: %d steps".format(eid, stepCounter))
+}
+
+
+object EvaluationEpisode {
+
+  def props(eid: Int, agent: ActorRef, domain: ActorRef): Props =
+    Props(new EvaluationEpisode(eid, agent, domain))
+}
+
+class EvaluationEpisode(eid: Int, agent: ActorRef, domain: ActorRef)
+  extends Episode(eid, agent, domain) {
+
+  import Episode._
+
+  def _handle[T](msg: T) =
+    agent ! Agent.Evaluate(msg)
+
+  override def _log =
+    log.info("Evaluation %d complete: %d steps.".format(eid, stepCounter))
 }

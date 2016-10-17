@@ -2,7 +2,7 @@ package scarla.domain
 
 import scala.collection.mutable.Set
 
-import akka.actor.{Actor, ActorRef, ActorLogging}
+import akka.actor.{Actor, ActorRef}
 
 object Domain {
 
@@ -12,7 +12,7 @@ object Domain {
   final case class DoAction(aid: Int) extends Instruction
 }
 
-abstract class Domain(val spec: DomainSpec) extends Actor with ActorLogging {
+abstract class Domain(val spec: DomainSpec) extends Actor {
   import Domain._
 
   var state: State = initialState
@@ -43,3 +43,6 @@ abstract class Domain(val spec: DomainSpec) extends Actor with ActorLogging {
     }
   }
 }
+
+abstract class MultiAgentDomain(spec: DomainSpec, val nAgents: Int)
+  extends Domain(spec)

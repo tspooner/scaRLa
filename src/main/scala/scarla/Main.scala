@@ -10,8 +10,9 @@ import scala.concurrent.duration._
 
 import com.typesafe.config.ConfigFactory
 
-import scarla.experiment.Experiment
+import scarla.experiment.{Experiment, Feedback}
 import scarla.agent.TDControlAgent
+import scarla.utilities.Recorder
 import scarla.algorithm._
 import scarla.mapping._
 import scarla.policy._
@@ -38,6 +39,10 @@ object Main extends App {
         (scarla.domain.CliffWalk,
           scarla.domain.CliffWalk.props)
 
+      case "blackjack" =>
+        (scarla.domain.Blackjack,
+          scarla.domain.Blackjack.props(conf.getInt("domain.nAgents")))
+
       case x =>
         system.terminate
         throw new RuntimeException("Unknown domain type: %s".format(x))
@@ -46,6 +51,7 @@ object Main extends App {
   // - Mapping:
   val mapping: Mapping = conf.getString("agent.mapping.type").toLowerCase match {
     case "tabular" => new Tabular(domainSpec)
+    case "basic"   => new Basic(domainSpec)
     case "rbf"     => new RBF(domainSpec)
 
     case x =>
@@ -73,9 +79,17 @@ object Main extends App {
       throw new RuntimeException("Unknown learning algorithm: %s".format(x))
   }
 
+  // Recorder helper:
+  def _recorder(path: String) = {
+    val r = system.actorOf(Recorder.props(path, List("eid", "n_steps")))
+    system.eventStream.subscribe(r, classOf[Feedback])
+
+    r
+  }
 
   // Start the experiment:
   val exp = system.actorOf(Experiment.props(domainProps, agentProps), name)
+  var recorder = _recorder("/tmp/output.json")
 
   val nTrainEpisodes = conf.getInt("experiment.nTrainEpisodes")
   val nEvaluationEpisodes = conf.getInt("experiment.nEvaluationEpisodes")

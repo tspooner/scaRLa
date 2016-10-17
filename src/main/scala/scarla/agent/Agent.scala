@@ -2,8 +2,8 @@ package scarla.agent
 
 import akka.actor.{ActorRef, Actor}
 
-import scarla.domain.{Domain, State}
 import scarla.mapping.Mapping
+import scarla.domain.{Domain, State}
 import scarla.policy.{Policy, Greedy}
 
 object Agent {
@@ -18,10 +18,11 @@ abstract class Agent(val mapping: Mapping, val policy: Policy)
 
   import Agent._
 
-  val greedyPolicy: Policy = new Greedy(mapping)
+  val greedyPolicy = new Greedy(mapping)
 
   def act(s: State): Int = policy.pi(s)
-  def greedy(s: State): Int = greedyPolicy.pi(s)
+  def greedy(s: State) = greedyPolicy.pi(s)
+
 
   def learn(s: State, aid: Int, r: Double, ns: State)
 

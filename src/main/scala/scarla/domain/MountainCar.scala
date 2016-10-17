@@ -2,8 +2,6 @@ package scarla.domain
 
 import akka.actor.Props
 
-import scala.math
-
 import scala.collection.immutable.Vector
 
 object MountainCar extends DomainSpec {
@@ -37,11 +35,11 @@ class MountainCar extends Domain(MountainCar) {
     State(Vector(-0.5, 0.0), ALL_AIDS)
 
   def next(aid: Int): State = {
-    val a = MountainCar.ACTIONS(aid)
+    val a = ACTIONS(aid)
     var position = state.values(0)
     var velocity = state.values(1)
 
-    velocity += 0.001*a - 0.0025*math.cos(3*position)
+    velocity += 0.001*a - 0.0025*scala.math.cos(3*position)
     position += velocity
 
     if (position <= X_MIN) {
