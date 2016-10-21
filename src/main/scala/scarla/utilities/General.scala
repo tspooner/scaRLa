@@ -2,10 +2,15 @@ package scarla.utilities
 
 object General {
 
+  def range(n: Int): Vector[Int] = (0 until n).toVector
+
+  def bounded(v: Double, lb: Double, ub: Double): Double =
+    math.min(ub, math.max(lb, v))
+
   def sub2ind(sub: Vector[Int], range: Vector[Int]): Int =
-    sub.drop(1).zipWithIndex.foldRight(0) {
-      case ((value, index), acc) => acc*range(index) + value
-    }*range(0) + sub(0)
+    sub.dropRight(1).zipWithIndex.foldLeft(0) {
+      case (acc, (value, index)) => acc*range(index) + value
+    }*range.last + sub.last
 
   def merge[T](a: List[List[T]], b: List[T]) = a match {
     case List() => for(i <- b) yield List(i)

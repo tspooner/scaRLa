@@ -9,7 +9,7 @@ import scarla.mapping.Mapping
 class EpsilonGreedy(mapping: Mapping) extends Greedy(mapping) {
 
   val k: Double = 1.1
-  var epsilon: Double = 0.01
+  var epsilon: Double = 0.40
 
   // override def _pi(s: State, a: Int, bestActions: Set[Int]): Double = {
     // val avgEps = epsilon / s.availableActions.size

@@ -24,7 +24,7 @@ class TDControlAgent(algo: Algorithm, mapping: Mapping, policy: Policy)
 
   def learn(s: State, aid: Int, r: Double, ns: State) = {
     val target = algo.target(ns, mapping, policy)
-    val delta  = r + gamma*target - mapping.Q(s, aid)
+    val delta  = r + gamma*target - mapping.get(s, aid)
 
     mapping.update(s, aid, alpha*delta)
   }

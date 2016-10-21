@@ -1,58 +1,53 @@
 package scarla.domain
 
-import akka.actor.Props
+import scarla.utilities.General.bounded
 
-import scala.collection.immutable.Vector
+import akka.actor.Props
+import scala.collection.immutable.{Map, Vector}
 
 object MountainCar extends DomainSpec {
 
   // MountainCar:
-  private val X_MIN = -1.2
-  private val X_MAX = 0.5
-
-  private val V_MIN = -0.07
-  private val V_MAX = 0.07
-
   private val STEP_REWARD = -1.0
   private val GOAL_REWARD = 0.0
 
   private val ACTIONS = Vector(-1, 0, 1)
 
   // DomainSpec:
-  val N_DIMENSIONS = 2
-  val D_LIMITS = Vector((X_MIN, X_MAX), (V_MIN, V_MAX))
+  protected val _DEFAULT_LIMITS = Map(
+    "x" -> (-1.2, 0.5),
+    "v" -> (-0.07, 0.07)
+  )
 
-  val N_ACTIONS = 3
+  val N_ACTIONS = ACTIONS.size
 
   // Akka:
-  def props: Props = Props(classOf[MountainCar])
+  def props(dl: DL = Map()) = Props(new MountainCar(getLimits(dl)))
 }
 
-class MountainCar extends Domain(MountainCar) {
+class MountainCar(val dLimits: MountainCar.DL) extends Domain {
   import MountainCar._
 
-  def initialState =
-    State(Vector(-0.5, 0.0), ALL_AIDS)
+  var state = initialState
+  def initialState = State(Map(
+    "x" -> -0.5, "v" -> 0.0
+  ), ALL_AIDS)
 
   def next(aid: Int): State = {
     val a = ACTIONS(aid)
-    var position = state.values(0)
-    var velocity = state.values(1)
+    var x = state.values("x")
+    var v = state.values("v")
 
-    velocity += 0.001*a - 0.0025*scala.math.cos(3*position)
-    position += velocity
+    v = bounded(v + 0.001*a - 0.0025*scala.math.cos(3*x),
+                dLimits("v")._1, dLimits("v")._2)
+    x = bounded(x + v, dLimits("x")._1, dLimits("x")._2)
 
-    if (position <= X_MIN) {
-      position = X_MIN
-      velocity = 0.0
-    }
+    if (x <= dLimits("x")._1)
+      v = 0.0
 
-    if (position >= X_MAX)
-      position = X_MAX
-
-    State(Vector(position, velocity), ALL_AIDS, position == X_MAX)
+    State(Map("x" -> x, "v" -> v), ALL_AIDS, x == dLimits("x")._2)
   }
 
   def reward(s: State, ns: State): Double =
-    if (ns.values(0) >= X_MAX) GOAL_REWARD else STEP_REWARD
+    if (ns.values("x") >= dLimits("x")._2) GOAL_REWARD else STEP_REWARD
 }

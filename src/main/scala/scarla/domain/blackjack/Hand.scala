@@ -1,3 +1,0 @@
-package scarla.domain.blackjack
-
-

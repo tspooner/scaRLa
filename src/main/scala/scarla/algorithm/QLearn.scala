@@ -6,5 +6,5 @@ import scarla.mapping.Mapping
 
 object QLearn extends Algorithm {
   def target(s: State, mapping: Mapping, policy: Policy): Double =
-    mapping.V(s)
+    mapping.max(s)
 }

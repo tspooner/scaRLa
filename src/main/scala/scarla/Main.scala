@@ -11,7 +11,7 @@ import scala.concurrent.duration._
 import com.typesafe.config.ConfigFactory
 
 import scarla.experiment.{Experiment, Feedback}
-import scarla.agent.TDControlAgent
+import scarla.agent.{TDControlAgent, MCControlAgent}
 import scarla.utilities.Recorder
 import scarla.algorithm._
 import scarla.mapping._
@@ -33,15 +33,15 @@ object Main extends App {
 
       case "mountain-car" =>
         (scarla.domain.MountainCar,
-          scarla.domain.MountainCar.props)
+          scarla.domain.MountainCar.props())
 
       case "cliff-walk" =>
         (scarla.domain.CliffWalk,
-          scarla.domain.CliffWalk.props)
+          scarla.domain.CliffWalk.props())
 
       case "blackjack" =>
         (scarla.domain.Blackjack,
-          scarla.domain.Blackjack.props(conf.getInt("domain.nAgents")))
+          scarla.domain.Blackjack.props)
 
       case x =>
         system.terminate
@@ -49,14 +49,17 @@ object Main extends App {
   }
 
   // - Mapping:
-  val mapping: Mapping = conf.getString("agent.mapping.type").toLowerCase match {
-    case "tabular" => new Tabular(domainSpec)
-    case "basic"   => new Basic(domainSpec)
-    case "rbf"     => new RBF(domainSpec)
+  val limits = domainSpec.getLimits.values.toVector
+  val nActions = domainSpec.N_ACTIONS
 
-    case x =>
-      system.terminate
-      throw new RuntimeException("Unknown mapping type: %s".format(x))
+  val mapping = conf.getString("agent.mapping.type").toLowerCase match {
+      case "tabular" => new Tabular(limits, nActions)
+      case "basic"   => new Basic(limits, nActions)
+      case "rbf"     => new RBF(limits, nActions)
+
+      case x =>
+        system.terminate
+        throw new RuntimeException("Unknown mapping type: %s".format(x))
   }
 
   // - Policy:
@@ -71,8 +74,9 @@ object Main extends App {
 
   // Agent:
   val agentProps = conf.getString("agent.algorithm.type").toLowerCase match {
-    case "q-learn"   => TDControlAgent.props(QLearn, mapping, policy)
-    case "sarsa"     => TDControlAgent.props(SARSA, mapping, policy)
+    case "ql" => TDControlAgent.props(QLearn, mapping, policy)
+    case "sarsa" => TDControlAgent.props(SARSA, mapping, policy)
+    case "mc" => MCControlAgent.props(mapping, policy)
 
     case x =>
       system.terminate

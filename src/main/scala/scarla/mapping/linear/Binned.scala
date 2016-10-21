@@ -1,7 +1,6 @@
 package scarla.mapping
 
 import breeze.linalg.DenseVector
-
 import scarla.utilities.General.sub2ind
 
 trait Binned extends LinearMapping {
@@ -11,11 +10,11 @@ trait Binned extends LinearMapping {
 
 
   override val nFeatures: Vector[Int] =
-    domainSpec.D_LIMITS.map(_ => discretisation)
+    bounds.map(_ => discretisation)
 
   def featureWidths: DenseVector[Double] =
-    DenseVector.tabulate(domainSpec.N_DIMENSIONS){
-      i => (domainSpec.D_LIMITS(i)._2 - domainSpec.D_LIMITS(i)._1) / nFeatures(i)
+    DenseVector.tabulate(nDimensions){
+      i => (bounds(i)._2 - bounds(i)._1) / nFeatures(i)
     }
 
 
@@ -25,7 +24,7 @@ trait Binned extends LinearMapping {
 
   protected def _hash(sv: Vector[Double]): Int = {
     val bs = sv.zipWithIndex.map {
-      case (v, i) => _bin(v, domainSpec.D_LIMITS(i)._1, featureWidths(i))
+      case (v, i) => _bin(v, bounds(i)._1, featureWidths(i))
     }
 
     sub2ind(bs, nFeatures)

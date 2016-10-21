@@ -11,5 +11,5 @@ class Greedy(val mapping: Mapping) extends Policy {
     // if (bestActions contains a) (1.0 / bestActions.size) else 0.0
 
   def pi(s: State): Int =
-    mapping.Q(s).zip(s.availableActions).maxBy(_._1)._2
+    mapping.get(s).zip(s.availableActions).maxBy(_._1)._2
 }

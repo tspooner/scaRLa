@@ -1,20 +1,20 @@
 package scarla.mapping
 
-import breeze.linalg.DenseVector
+import java.io.File
+import scarla.domain.State
+import breeze.linalg.{DenseVector, DenseMatrix, csvwrite, max, *}
+import scarla.utilities.General.sub2ind
 import scala.collection.immutable.Vector
 
-import scarla.domain.{DomainSpec, State}
-import scarla.utilities.General.{sub2ind}
 
-class Tabular(domainSpec: DomainSpec)
-  extends LinearMapping(domainSpec) {
+class Tabular(bounds: Vector[(Double, Double)], nActions: Int)
+  extends LinearMapping(bounds, nActions) {
 
-  val nFeatures: Vector[Int] = domainSpec.D_LIMITS.map(dl => 1+(dl._2 - dl._1).toInt)
-
+  val nFeatures: Vector[Int] = bounds.map(dl => 1+(dl._2 - dl._1).toInt)
 
   protected def hash(sv: Vector[Double]): Int = {
     val bs = sv.zipWithIndex.map {
-      case (v, i) => (v - domainSpec.D_LIMITS(i)._1).toInt
+      case (v, i) => (v - bounds(i)._1).toInt
     }
 
     sub2ind(bs, nFeatures)
@@ -29,9 +29,9 @@ class Tabular(domainSpec: DomainSpec)
   }
 
 
-  override def Q(s: State, aid: Int): Double =
-    weights(hash(s.values), aid)
+  override def get(s: State, aid: Int): Double =
+    weights(hash(s.valueVector), aid)
 
   override def update(s: State, aid: Int, offset: Double) =
-    weights(hash(s.values), aid) += offset
+    weights(hash(s.valueVector), aid) += offset
 }

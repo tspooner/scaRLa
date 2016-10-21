@@ -1,13 +1,15 @@
-package scarla.domain.blackjack
+package scarla.domain.cards
 
 import scala.util.Random
 import scala.annotation.tailrec
 
-class Deck private(val cards: List[Card]) {
+case class Deck private(val cards: List[Card]) {
   def this() =
-    this(for {s <- Suit.values.toList; v <- Pip.values} yield Card(s, v))
+    this(for {s <- Suit.values.toList; r <- Rank.values.toList} yield Card(r, s))
 
-  def shuffle: Deck =
+  def size: Int = cards.size
+
+  def shuffled: Deck =
     new Deck(Random.shuffle(cards))
 
   def deal(n: Int = 1): (Seq[Card], Deck) = {
@@ -21,6 +23,7 @@ class Deck private(val cards: List[Card]) {
 
     loop(n, Seq(), this)
   }
+
 
   override def toString: String =
     "Deck: " + (cards mkString ", ")

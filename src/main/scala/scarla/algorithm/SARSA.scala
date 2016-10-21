@@ -6,5 +6,5 @@ import scarla.mapping.Mapping
 
 object SARSA extends Algorithm {
   def target(s: State, mapping: Mapping, policy: Policy): Double =
-    mapping.Q(s, policy.pi(s))
+    mapping.get(s, policy.pi(s))
 }

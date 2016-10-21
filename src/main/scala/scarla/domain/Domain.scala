@@ -12,20 +12,16 @@ object Domain {
   final case class DoAction(aid: Int) extends Instruction
 }
 
-abstract class Domain(val spec: DomainSpec) extends Actor {
+abstract class Domain extends Actor {
   import Domain._
 
-  var state: State = initialState
-
-
+  var state: State
   def initialState: State
+
+  protected def _reset = state = initialState
+
   def next(aid: Int): State
   def reward(s: State, ns: State): Double
-
-
-  protected def _reset = {
-    state = initialState
-  }
 
 
   def receive = {
@@ -33,6 +29,7 @@ abstract class Domain(val spec: DomainSpec) extends Actor {
       case Reset => _reset
 
       case GetState => sender() ! state
+
       case DoAction(aid) =>
         val ls = state
         state = next(aid)
@@ -43,6 +40,3 @@ abstract class Domain(val spec: DomainSpec) extends Actor {
     }
   }
 }
-
-abstract class MultiAgentDomain(spec: DomainSpec, val nAgents: Int)
-  extends Domain(spec)

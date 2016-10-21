@@ -15,7 +15,7 @@ class Gibbs(val mapping: LinearMapping)
     DenseVector.zeros(mapping.dimensionality)
 
   def prob(s: State): DenseVector[Double] = {
-    val eQs = mapping.Q(s).map(scala.math.exp)
+    val eQs = mapping.get(s).map(scala.math.exp)
     val norm = eQs.sum
 
     return DenseVector.tabulate(s.availableActions.size){

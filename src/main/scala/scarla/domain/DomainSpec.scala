@@ -1,14 +1,18 @@
 package scarla.domain
 
-import scala.collection.immutable.Vector
+import akka.actor.Props
+
+import scarla.utilities.General.range
+import scala.collection.immutable.Map
 
 trait DomainSpec {
 
-  val N_DIMENSIONS: Int
-  val D_LIMITS: Vector[Tuple2[Double, Double]]
+  type DL = Map[String, (Double, Double)]
+
+  protected val _DEFAULT_LIMITS: DL
+  def getLimits: DL = _DEFAULT_LIMITS
+  def getLimits(dl: DL): DL = dl ++ _DEFAULT_LIMITS
 
   val N_ACTIONS: Int
-
-  def ALL_AIDS: Vector[Int] =
-    (0 until N_ACTIONS).toVector
+  lazy val ALL_AIDS: Vector[Int] = range(N_ACTIONS)
 }
